@@ -1,67 +1,50 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
+using System.Globalization;
 using System.Reflection;
-using System.Security;
-using System.Security.Policy;
+using System.Runtime.ExceptionServices;
 
 namespace kolbasik.NSandbox
 {
     /// <summary>
     ///     <example>https://msdn.microsoft.com/en-us/library/bb763046(v=vs.110).aspx</example>
     /// </summary>
-    /// <seealso cref="System.MarshalByRefObject" />
-    [Serializable]
-    public sealed class Sandbox : MarshalByRefObject, IDisposable
+    public sealed class Sandbox : IDisposable
     {
         private readonly AppDomain sandboxDomain;
-        private readonly AppDomainSetup sandboxDomainSetup;
 
-        public Sandbox(
-            Evidence domainEvidence = null,
-            AppDomainSetup domainSetup = null,
-            PermissionSet domainPermission = null,
-            params StrongName[] fullTrustAssemblies)
+        public Sandbox(SandboxConfig config)
         {
-            var currentDomain = AppDomain.CurrentDomain;
-            sandboxDomainSetup = domainSetup ?? currentDomain.SetupInformation;
+            if (config == null) throw new ArgumentNullException(nameof(config));
             sandboxDomain = AppDomain.CreateDomain(
                 "Sandbox_" + DateTime.UtcNow.Ticks,
-                domainEvidence ?? currentDomain.Evidence,
-                sandboxDomainSetup,
-                domainPermission ?? currentDomain.PermissionSet,
-                fullTrustAssemblies);
+                config.Evidence,
+                config.Setup,
+                config.PermissionSet,
+                config.FullTrustAssemblies.ToArray());
         }
 
         public void Dispose() => AppDomain.Unload(sandboxDomain);
 
-        public T CreateInstance<T>(string assemblyName, string typeName)
+        public T CreateInstance<T>(string assemblyName, string typeName, params object[] arguments)
         {
+            object instance = null;
             try
             {
-                var instance = (T)sandboxDomain.CreateInstanceAndUnwrap(assemblyName, typeName);
-                return instance;
+                instance = sandboxDomain.CreateInstanceAndUnwrap(assemblyName, typeName, true,
+                    BindingFlags.CreateInstance, null, arguments, CultureInfo.InvariantCulture, null);
             }
             catch (Exception ex)
             {
+                var targetInvocationException = ex as TargetInvocationException;
+                if (targetInvocationException != null)
+                {
+                    ex = targetInvocationException.InnerException;
+                }
                 Trace.TraceError($"Sandbox caught: {ex}");
-                throw;
+                ExceptionDispatchInfo.Capture(ex).Throw();
             }
-        }
-
-        public static AppDomainSetup CreateSandboxSetup(string path, AppDomainSetup domainSetup = null)
-        {
-            var sendboxSetup = ShallowCopy(domainSetup ?? AppDomain.CurrentDomain.SetupInformation);
-            var binPath = Path.IsPathRooted(path) ? path : string.Concat(sendboxSetup.PrivateBinPath, @"\", path);
-            sendboxSetup.ApplicationName = "Sandbox_" + DateTime.UtcNow.Ticks;
-            sendboxSetup.ShadowCopyDirectories = sendboxSetup.PrivateBinPath = binPath;
-            return sendboxSetup;
-        }
-
-        public static T ShallowCopy<T>(T source)
-        {
-            var method = typeof(T).GetMethod(@"MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.InvokeMethod);
-            return (T)method.Invoke(source, new object[0]);
+            return (T) instance;
         }
     }
 }
