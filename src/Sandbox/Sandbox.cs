@@ -26,12 +26,11 @@ namespace kolbasik.NSandbox
 
         public void Dispose() => AppDomain.Unload(sandboxDomain);
 
-        public T CreateInstance<T>(string assemblyName, string typeName, params object[] arguments)
+        public object CreateInstance(string assemblyName, string typeName, params object[] arguments)
         {
-            object instance = null;
             try
             {
-                instance = sandboxDomain.CreateInstanceAndUnwrap(assemblyName, typeName, true,
+                return sandboxDomain.CreateInstanceAndUnwrap(assemblyName, typeName, true,
                     BindingFlags.CreateInstance, null, arguments, CultureInfo.InvariantCulture, null);
             }
             catch (Exception ex)
@@ -43,8 +42,8 @@ namespace kolbasik.NSandbox
                 }
                 Trace.TraceError($"Sandbox caught: {ex}");
                 ExceptionDispatchInfo.Capture(ex).Throw();
+                throw;
             }
-            return (T) instance;
         }
     }
 }

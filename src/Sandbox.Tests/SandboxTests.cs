@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Security;
-using System.Security.Permissions;
 using Xunit;
 
 namespace kolbasik.NSandbox.Tests
@@ -32,7 +31,7 @@ namespace kolbasik.NSandbox.Tests
             sandbox.Dispose();
 
             // assert
-            Assert.Throws<AppDomainUnloadedException>(() => sandbox.CreateInstance<int>("System", "System.Int32"));
+            Assert.Throws<AppDomainUnloadedException>(() => sandbox.CreateInstance("System", "System.Int32"));
         }
 
         [Fact]
@@ -43,14 +42,21 @@ namespace kolbasik.NSandbox.Tests
             var sandbox = new Sandbox(config);
 
             var tempFile = Path.GetTempFileName();
+            try
+            {
+                // act
+                var actual = sandbox.CreateInstance<StreamWriter>(tempFile);
 
-            // act
-            var type = typeof (StreamWriter);
-            var actual = sandbox.CreateInstance<StreamWriter>(type.Assembly.FullName, type.FullName, tempFile);
+                // assert
+                Assert.NotNull(actual);
+                Assert.IsType<StreamWriter>(actual);
 
-            // assert
-            Assert.NotNull(actual);
-            Assert.IsType<StreamWriter>(actual);
+                actual.Close();
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
         }
 
         [Fact]
@@ -62,11 +68,15 @@ namespace kolbasik.NSandbox.Tests
             var sandbox = new Sandbox(config);
 
             var tempFile = Path.GetTempFileName();
-
-            // act & assert
-            var type = typeof (StreamWriter);
-            Assert.Throws<SecurityException>(
-                () => sandbox.CreateInstance<StreamWriter>(type.Assembly.FullName, type.FullName, tempFile));
+            try
+            {
+                // act & assert
+                Assert.Throws<SecurityException>(() => sandbox.CreateInstance<StreamWriter>(tempFile));
+            }
+            finally
+            {
+                File.Delete(tempFile);
+            }
         }
     }
 }
