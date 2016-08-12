@@ -16,7 +16,9 @@ namespace kolbasik.NSandbox.Tests
 
             // assert
             Assert.NotNull(sandbox);
+            Assert.NotNull(sandbox.Setup);
             Assert.NotNull(sandbox.Evidence);
+            Assert.NotNull(sandbox.PermissionSet);
             Assert.NotNull(sandbox.FullTrustAssemblies);
         }
 

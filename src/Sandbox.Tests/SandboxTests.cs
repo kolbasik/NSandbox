@@ -63,9 +63,7 @@ namespace kolbasik.NSandbox.Tests
         public void CreateInstance_should_raise_a_security_exception_if_does_not_trust()
         {
             // arrange
-            var config = new SandboxConfig();
-            config.Setup = new AppDomainSetup {ApplicationBase = @"C:/temp"};
-            var sandbox = new Sandbox(config);
+            var sandbox = new Sandbox(new SandboxConfig(@"C:/temp"));
 
             var tempFile = Path.GetTempFileName();
             try

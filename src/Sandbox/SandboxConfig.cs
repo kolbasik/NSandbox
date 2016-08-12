@@ -9,9 +9,14 @@ namespace kolbasik.NSandbox
 {
     public sealed class SandboxConfig
     {
-        public SandboxConfig()
+        public SandboxConfig() : this(string.Empty)
+        {
+        }
+
+        public SandboxConfig(string applicationBase)
         {
             Evidence = new Evidence();
+            Setup = new AppDomainSetup { ApplicationBase = applicationBase };
             PermissionSet = new PermissionSet(PermissionState.None);
             FullTrustAssemblies = new List<StrongName>();
         }
@@ -29,7 +34,7 @@ namespace kolbasik.NSandbox
             config.Setup = currentDomain.SetupInformation;
             config.PermissionSet = currentDomain.PermissionSet;
             config.FullTrustAssemblies.AddRange(currentDomain.ApplicationTrust.FullTrustAssemblies);
-            config.Setup.ApplicationName = "Sandbox_" + DateTime.UtcNow.Ticks;
+            config.Setup.ApplicationName = @"Sandbox_" + DateTime.UtcNow.Ticks;
             return config;
         }
 
